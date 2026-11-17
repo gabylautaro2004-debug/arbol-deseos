@@ -1,0 +1,686 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Árbol de Deseos</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Crimson+Pro:ital,wght@0,400;0,600;1,400&family=IM+Fell+English:ital@0;1&display=swap">
+<style>
+:root{
+  --night:#0f1230;
+  --night-2:#1b2050;
+  --ink:#161431;
+  --paper:#f1e4c1;
+  --paper-2:#e4d2a2;
+  --gold:#f5c82e;
+  --ember:#b5532a;
+  --dim:#cfc3a4;
+  --display:'IM Fell English',Georgia,'Times New Roman',serif;
+  --body:'Crimson Pro',Georgia,'Times New Roman',serif;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{min-height:100%}
+[hidden]{display:none!important}
+body{
+  margin:0;
+  background:radial-gradient(ellipse at 50% 0%,var(--night-2),var(--night) 60%),var(--night);
+  color:var(--paper);
+  font:400 18px/1.5 var(--body);
+  padding-top:max(28px,env(safe-area-inset-top,0px));
+  padding-bottom:max(48px,env(safe-area-inset-bottom,0px));
+  padding-left:max(16px,env(safe-area-inset-left,0px));
+  padding-right:max(16px,env(safe-area-inset-right,0px));
+  overflow-x:hidden;
+}
+body::after{
+  content:"";position:fixed;inset:0;pointer-events:none;opacity:.07;
+  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+}
+.wrap{max-width:1180px;margin:0 auto}
+.head{display:flex;flex-direction:column;gap:6px;margin-bottom:22px}
+.eyebrow{margin:0;font:600 12px/1.2 var(--body);letter-spacing:.18em;text-transform:uppercase;color:var(--gold)}
+h1{margin:0;font:400 clamp(40px,6.5vw,68px)/1 var(--display);text-wrap:balance}
+.lede{margin:6px 0 0;max-width:56ch;color:var(--dim);font-size:19px}
+
+.grid{display:grid;grid-template-columns:minmax(0,1fr) 380px;gap:24px;align-items:start}
+@media (max-width:880px){.grid{grid-template-columns:minmax(0,1fr)}}
+
+.stage{
+  position:relative;height:min(78vh,720px);min-height:420px;
+  border:2px solid #3b4086;border-radius:18px 6px 20px 8px / 8px 18px 6px 20px;
+  background:radial-gradient(ellipse at 50% 92%,rgba(245,200,46,.22),transparent 55%),linear-gradient(#141a42,#0b0e29);
+  overflow:hidden;
+}
+@media (max-width:880px){.stage{height:min(74vh,540px)}}
+#gl{display:block;width:100%;height:100%;touch-action:pan-y;cursor:grab}
+#gl:active{cursor:grabbing}
+.hud{
+  position:absolute;top:12px;left:12px;right:12px;display:flex;flex-direction:column;gap:2px;pointer-events:none;
+  font-size:15px;color:var(--dim);
+}
+.hud strong{font:400 26px/1 var(--display);color:var(--gold)}
+.card{
+  position:absolute;left:12px;right:12px;bottom:12px;
+  background:var(--paper);color:#2a2118;border:2px solid var(--ink);
+  border-radius:12px 4px 14px 5px / 5px 12px 4px 14px;
+  box-shadow:4px 4px 0 var(--ink);padding:14px 44px 14px 16px;
+}
+.card .meta{margin:0 0 4px;font:600 12px/1.2 var(--body);letter-spacing:.14em;text-transform:uppercase;color:var(--ember)}
+.card .text{margin:0;font:400 italic 21px/1.3 var(--display);overflow-wrap:anywhere}
+.card .del{margin-top:10px;font:600 15px/1 var(--body);background:#f3c9b8;color:#6e1f0c;border:2px solid var(--ink);border-radius:8px 3px 9px 4px;padding:8px 12px;cursor:pointer}
+.x{position:absolute;top:6px;right:8px;width:32px;height:32px;border:0;background:none;font:400 26px/1 var(--body);color:#2a2118;cursor:pointer;border-radius:6px}
+.nogl{position:absolute;inset:0;margin:0;display:grid;place-items:center;padding:24px;text-align:center;color:var(--dim)}
+
+.panel{
+  background:var(--paper);color:#2a2118;border:2px solid var(--ink);
+  border-radius:16px 5px 18px 6px / 6px 16px 5px 18px;
+  box-shadow:5px 5px 0 var(--ink);padding:20px 20px 16px;
+  display:flex;flex-direction:column;gap:16px;min-width:0;
+}
+h2{margin:0;font:400 30px/1.1 var(--display)}
+form,.done{display:flex;flex-direction:column;gap:16px}
+fieldset{margin:0;padding:0;border:0;min-width:0}
+legend,.lab{padding:0;margin-bottom:6px;font:600 15px/1.2 var(--body);letter-spacing:.04em}
+.shapes{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px}
+.shape{position:relative;display:block}
+.shape input{position:absolute;opacity:0;pointer-events:none}
+.shape span{
+  display:flex;flex-direction:column;align-items:center;gap:2px;
+  padding:8px 2px 6px;border:2px solid var(--ink);border-radius:8px 3px 9px 4px;
+  background:var(--paper-2);font-size:12.5px;line-height:1.1;cursor:pointer;
+}
+.shape svg{width:30px;height:30px;fill:var(--gold);stroke:var(--ink);stroke-width:1.4;stroke-linejoin:round}
+.shape input:checked + span{background:var(--gold);box-shadow:2px 2px 0 var(--ink)}
+.shape input:focus-visible + span{outline:3px solid var(--ember);outline-offset:2px}
+textarea,input[type=email],input[type=text]{
+  width:100%;font:400 18px/1.4 var(--body);color:#2a2118;background:var(--paper-2);
+  border:2px solid var(--ink);border-radius:8px 3px 9px 4px;padding:10px 12px;
+}
+input.code{font-size:26px;letter-spacing:.3em;text-align:center}
+textarea{resize:vertical;min-height:104px}
+textarea:focus-visible,input:focus-visible,summary:focus-visible,.btn:focus-visible,.x:focus-visible,.list button:focus-visible,.link:focus-visible,.del:focus-visible{outline:3px solid var(--ember);outline-offset:2px}
+.row{display:flex;justify-content:space-between;gap:12px;font-size:14px;color:#5a4b36}
+.help{margin:6px 0 0;font-size:14.5px;line-height:1.35;color:#5a4b36}
+.err{margin:0;color:#8a2a12;font-weight:600;min-height:1.4em}
+.btn{
+  font:600 19px/1 var(--body);background:var(--gold);color:var(--ink);
+  border:2px solid var(--ink);border-radius:10px 4px 12px 5px;padding:13px 18px;
+  box-shadow:3px 3px 0 var(--ink);cursor:pointer;
+}
+.btn:hover{transform:translate(-1px,-1px);box-shadow:4px 4px 0 var(--ink)}
+.btn:active{transform:translate(2px,2px);box-shadow:1px 1px 0 var(--ink)}
+.btn:disabled{opacity:.6;cursor:default;transform:none;box-shadow:3px 3px 0 var(--ink)}
+.btn.alt{background:var(--paper-2)}
+.link{background:none;border:0;padding:0;font:inherit;color:var(--ember);text-decoration:underline;cursor:pointer}
+.links{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:15px}
+.sess{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:14px;color:#5a4b36}
+.sess span{overflow-wrap:anywhere}
+.done p{margin:0}
+.done .big{font:400 italic 24px/1.25 var(--display)}
+.all{border-top:2px dashed #b8a574;padding-top:12px}
+summary{cursor:pointer;font:600 16px/1.3 var(--body)}
+.list{margin:10px 0 0;padding:0;list-style:none;display:flex;flex-direction:column;gap:6px;max-height:260px;overflow-y:auto}
+.list button{
+  width:100%;text-align:left;font:400 16px/1.3 var(--body);color:#2a2118;background:var(--paper-2);
+  border:1.5px solid var(--ink);border-radius:6px 3px 7px 3px;padding:7px 10px;cursor:pointer;
+}
+.list button:hover{background:#ecd98d}
+.note{margin:0;font-size:14px;line-height:1.35;color:#5a4b36}
+@media (prefers-reduced-motion:reduce){.btn:hover,.btn:active{transform:none}}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header class="head">
+    <p class="eyebrow">Facultad de Ciencias Económicas · UNPSJB</p>
+    <h1>Árbol de Deseos</h1>
+    <p class="lede">Escribe un deseo, elige una decoración y cuélgala del árbol. Cada luz amarilla es el deseo de alguien de la facultad. El 24 de diciembre a la noche, todos reciben un saludo.</p>
+  </header>
+
+  <main class="grid">
+    <section class="stage" id="stage" aria-label="Árbol de Navidad en 3D">
+      <canvas id="gl"></canvas>
+      <div class="hud"><strong id="total">0 deseos</strong><span>Toca una luz para leerla. Arrastra para girar el árbol.</span></div>
+      <div class="card" id="card" hidden role="status" aria-live="polite">
+        <button class="x" id="close" type="button" aria-label="Cerrar deseo">×</button>
+        <p class="meta" id="cardMeta"></p>
+        <p class="text" id="cardText"></p>
+        <button class="del" id="del" type="button" hidden>Borrar este deseo (moderador)</button>
+      </div>
+      <p class="nogl" id="nogl" hidden>Tu navegador no pudo mostrar el árbol en 3D. Igual puedes leer los deseos en la lista del costado.</p>
+    </section>
+
+    <aside class="panel">
+      <h2>Cuelga tu deseo</h2>
+
+      <div class="sess" id="sess" hidden>
+        <span>Sesión: <strong id="sessEmail"></strong></span>
+        <button class="link" id="logout" type="button">Salir</button>
+      </div>
+
+      <!-- Paso 1: correo -->
+      <form id="formEmail" novalidate>
+        <div>
+          <label class="lab" for="mailIn">Tu correo</label>
+          <input id="mailIn" type="email" autocomplete="email" inputmode="email" placeholder="nombre@correo.com">
+          <p class="help">Te mandamos un código de verificación. Lo usamos solo para que cada persona cuelgue un deseo y para enviarte un saludo el 24 de diciembre a la noche. No se muestra en el árbol.</p>
+        </div>
+        <p class="err" id="errEmail" role="alert"></p>
+        <button class="btn" id="btnEmail" type="submit">Enviarme el código</button>
+      </form>
+
+      <!-- Paso 2: código -->
+      <form id="formCode" novalidate hidden>
+        <div>
+          <label class="lab" for="codeIn">Código que te llegó</label>
+          <input id="codeIn" class="code" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="10" placeholder="······">
+          <p class="help" id="codeHelp"></p>
+        </div>
+        <p class="err" id="errCode" role="alert"></p>
+        <button class="btn" id="btnCode" type="submit">Entrar</button>
+        <div class="links">
+          <button class="link" id="resend" type="button">Reenviar código</button>
+          <button class="link" id="changeMail" type="button">Cambiar correo</button>
+        </div>
+      </form>
+
+      <!-- Paso 3: deseo -->
+      <form id="form" novalidate hidden>
+        <fieldset>
+          <legend>Decoración</legend>
+          <div class="shapes">
+            <label class="shape"><input type="radio" name="shape" value="estrella" checked><span><svg viewBox="-12 -12 24 24" aria-hidden="true"><polygon points="0,-10 2.47,-3.4 9.51,-3.09 3.99,1.3 5.88,8.09 0,4.2 -5.88,8.09 -3.99,1.3 -9.51,-3.09 -2.47,-3.4"/></svg>Estrella</span></label>
+            <label class="shape"><input type="radio" name="shape" value="esfera"><span><svg viewBox="-12 -12 24 24" aria-hidden="true"><circle cx="0" cy="1.5" r="8.5"/><rect x="-2" y="-9.5" width="4" height="3"/></svg>Esfera</span></label>
+            <label class="shape"><input type="radio" name="shape" value="campana"><span><svg viewBox="-12 -12 24 24" aria-hidden="true"><path d="M-9 7 C-7 5 -7 -1 -6 -4 C-5 -8 5 -8 6 -4 C7 -1 7 5 9 7 Z"/><circle cx="0" cy="9" r="2"/></svg>Campana</span></label>
+            <label class="shape"><input type="radio" name="shape" value="luna"><span><svg viewBox="-12 -12 24 24" aria-hidden="true"><path d="M6.5 -7.6 A10 10 0 1 0 6.5 7.6 A8 8 0 1 1 6.5 -7.6 Z"/></svg>Luna</span></label>
+            <label class="shape"><input type="radio" name="shape" value="corazon"><span><svg viewBox="-12 -12 24 24" aria-hidden="true"><path d="M0 8 C-12 -1 -8 -10 0 -4 C8 -10 12 -1 0 8 Z"/></svg>Corazón</span></label>
+          </div>
+        </fieldset>
+        <div>
+          <label class="lab" for="wish">Tu deseo</label>
+          <textarea id="wish" maxlength="200" rows="4" placeholder="Escribe aquí tu deseo para el año que viene"></textarea>
+          <div class="row"><span>Es anónimo: nadie ve tu nombre ni tu correo.</span><span id="count">0/200</span></div>
+        </div>
+        <p class="err" id="err" role="alert"></p>
+        <button class="btn" id="btnWish" type="submit">Colgar mi deseo</button>
+      </form>
+
+      <!-- Paso 4: listo -->
+      <div class="done" id="done" hidden>
+        <p class="big">Listo, tu deseo ya cuelga del árbol.</p>
+        <p>Cada persona puede colgar un solo deseo. El 24 de diciembre a la noche te llega el saludo de Navidad al correo.</p>
+        <p class="note" id="modNote" hidden>Eres moderador: al tocar un deseo vas a ver el botón para borrarlo.</p>
+      </div>
+
+      <details class="all">
+        <summary>Leer todos los deseos</summary>
+        <ul class="list" id="list"></ul>
+      </details>
+      <p class="note">Los deseos son anónimos y públicos. Tu correo no se muestra en el árbol.</p>
+    </aside>
+  </main>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+(function(){
+  var SUPABASE_URL='https://clfyqlkigzrfenrujhkg.supabase.co';
+  var SUPABASE_KEY='sb_publishable_ftSfGYDY3vXPc-jmo5XB-A_WkEA2RCg';
+
+  var SHAPES={esfera:'Esfera',estrella:'Estrella',campana:'Campana',luna:'Luna',corazon:'Corazón'};
+  var reduce=window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var $=function(id){return document.getElementById(id);};
+  var frac=function(x){return x-Math.floor(x);};
+  var rnd=function(n){return frac(Math.sin(n*127.1+311.7)*43758.5453);};
+  var wrap=function(a){a=(a+Math.PI)%(2*Math.PI);if(a<0)a+=2*Math.PI;return a-Math.PI;};
+
+  /* ---------- 3D ---------- */
+  function build3D(onPick){
+    var stage=$('stage'),canvas=$('gl'),renderer;
+    try{renderer=new THREE.WebGLRenderer({canvas:canvas,antialias:true,alpha:true});}catch(e){renderer=null;}
+    if(!renderer||!window.THREE){$('nogl').hidden=false;canvas.hidden=true;return {add:function(){},remove:function(){},faceTo:function(){},setSelected:function(){}};}
+
+    var INK=0x161431,YELLOW=0xffd23f;
+    var scene=new THREE.Scene();
+    var camera=new THREE.PerspectiveCamera(40,1,0.1,100);
+    var world=new THREE.Group();scene.add(world);
+    scene.add(new THREE.AmbientLight(0x8d9bd8,0.8));
+    var sun=new THREE.DirectionalLight(0xfff0c8,0.9);sun.position.set(4,8,6);scene.add(sun);
+    var rim=new THREE.DirectionalLight(0x6f86ff,0.5);rim.position.set(-6,3,-4);scene.add(rim);
+
+    var outlineMat=new THREE.MeshBasicMaterial({color:INK,side:THREE.BackSide});
+    var glowTex=(function(){
+      var c=document.createElement('canvas');c.width=c.height=64;var x=c.getContext('2d');
+      var g=x.createRadialGradient(32,32,0,32,32,32);
+      g.addColorStop(0,'rgba(255,220,100,1)');g.addColorStop(1,'rgba(255,220,100,0)');
+      x.fillStyle=g;x.fillRect(0,0,64,64);return new THREE.CanvasTexture(c);
+    })();
+    function glowSprite(size,opacity){
+      var s=new THREE.Sprite(new THREE.SpriteMaterial({map:glowTex,transparent:true,opacity:opacity,depthWrite:false,blending:THREE.AdditiveBlending}));
+      s.scale.set(size,size,1);return s;
+    }
+    function outlined(geo,mat,k){
+      var g=new THREE.Group();
+      g.add(new THREE.Mesh(geo,mat));
+      var o=new THREE.Mesh(geo,outlineMat);o.scale.setScalar(k);g.add(o);return g;
+    }
+
+    var TIERS=[{rb:2.3,h:2.5,y:0.7},{rb:1.85,h:2.3,y:2.0},{rb:1.4,h:2.1,y:3.3},{rb:0.95,h:1.9,y:4.5}];
+    var GREENS=[0x2b6a50,0x27604a,0x2f735a,0x33805f];
+    TIERS.forEach(function(t,i){
+      var geo=new THREE.ConeGeometry(t.rb,t.h,11,1,false);
+      var p=geo.attributes.position;
+      for(var k=0;k<p.count;k++){
+        var x=p.getX(k),y=p.getY(k),z=p.getZ(k);
+        if(y<0&&(x*x+z*z)>0.0001){
+          var key=Math.round((Math.atan2(z,x)+Math.PI)/(2*Math.PI)*11)%11;
+          var j=1+(rnd(key+i*40)-0.5)*0.18;
+          p.setX(k,x*j);p.setZ(k,z*j);p.setY(k,y+(rnd(key*3+i)-0.5)*0.14);
+        }
+      }
+      var g=outlined(geo,new THREE.MeshLambertMaterial({color:GREENS[i],flatShading:true}),1.045);
+      g.position.y=t.y+t.h/2;world.add(g);
+    });
+    var trunk=outlined(new THREE.CylinderGeometry(0.32,0.42,1.1,8),new THREE.MeshLambertMaterial({color:0x6b4423,flatShading:true}),1.12);
+    trunk.position.y=0.5;world.add(trunk);
+    var ground=outlined(new THREE.CylinderGeometry(3.5,3.7,0.25,28),new THREE.MeshLambertMaterial({color:0xe3e7f6,flatShading:true}),1.03);
+    ground.position.y=-0.12;world.add(ground);
+
+    function starShape(n,ro,ri){
+      var s=new THREE.Shape();
+      for(var i=0;i<n*2;i++){
+        var r=i%2?ri:ro,a=Math.PI/2+i*Math.PI/n,x=Math.cos(a)*r,y=Math.sin(a)*r;
+        if(i)s.lineTo(x,y);else s.moveTo(x,y);
+      }
+      s.closePath();return s;
+    }
+    function ext(shape,d){var g=new THREE.ExtrudeGeometry(shape,{depth:d,bevelEnabled:false});g.center();return g;}
+    var G={
+      esfera:function(){return new THREE.SphereGeometry(0.2,14,10);},
+      estrella:function(){return ext(starShape(5,0.3,0.13),0.08);},
+      campana:function(){
+        var pts=[[0,0.2],[0.08,0.19],[0.15,0.1],[0.17,-0.05],[0.22,-0.16],[0.23,-0.18],[0,-0.18]].map(function(q){return new THREE.Vector2(q[0],q[1]);});
+        return new THREE.LatheGeometry(pts,12);
+      },
+      luna:function(){
+        var s=new THREE.Shape(),a1=Math.atan2(0.19,0.1625),b1=Math.atan2(0.19,0.0625);
+        s.moveTo(0.1625,0.19);
+        s.absarc(0,0,0.25,a1,Math.PI*2-a1,false);
+        s.absarc(0.1,0,0.2,-b1,b1,true);
+        return ext(s,0.08);
+      },
+      corazon:function(){
+        var s=new THREE.Shape();
+        s.moveTo(5,5);s.bezierCurveTo(5,5,4,0,0,0);s.bezierCurveTo(-6,0,-6,7,-6,7);
+        s.bezierCurveTo(-6,11,-3,15.4,5,19);s.bezierCurveTo(12,15.4,16,11,16,7);
+        s.bezierCurveTo(16,7,16,0,10,0);s.bezierCurveTo(7,0,5,5,5,5);
+        var g=ext(s,3);g.scale(0.017,0.017,0.025);g.rotateZ(Math.PI);return g;
+      }
+    };
+    var yellowMat=new THREE.MeshBasicMaterial({color:YELLOW,side:THREE.DoubleSide});
+
+    function makeOrnament(shape,id){
+      if(!G[shape])shape='estrella';
+      var geo=G[shape](),grp=new THREE.Group();
+      grp.rotation.order='YXZ';
+      var o=new THREE.Mesh(geo,outlineMat);o.scale.setScalar(1.22);
+      grp.add(o,new THREE.Mesh(geo,yellowMat),glowSprite(0.95,0.55));
+      var hit=new THREE.Mesh(new THREE.SphereGeometry(0.34,8,6),new THREE.MeshBasicMaterial({transparent:true,opacity:0,depthWrite:false}));
+      hit.userData.id=id;grp.add(hit);
+      return {grp:grp,hit:hit};
+    }
+    /* La posición depende del id del deseo: así no se mueve si se borra otro */
+    function slot(i){
+      var u=frac(i*0.6180339+0.13),W=[0.4,0.7,0.9,1],t=0;
+      while(u>W[t])t++;
+      var T=TIERS[t],f=0.1+0.62*frac(i*0.7548776+0.31),a=i*2.399963;
+      var y=T.y+f*T.h,r=T.rb*(1-f)+0.12;
+      return {x:Math.cos(a)*r,y:y,z:Math.sin(a)*r,phi:Math.atan2(Math.cos(a),Math.sin(a))};
+    }
+
+    var top=new THREE.Group();
+    var topGeo=ext(starShape(5,0.55,0.24),0.14);
+    var topOl=new THREE.Mesh(topGeo,outlineMat);topOl.scale.setScalar(1.18);
+    top.add(topOl,new THREE.Mesh(topGeo,yellowMat),glowSprite(2.1,0.6));
+    top.position.y=6.6;world.add(top);
+
+    var candles=[];
+    for(var ci=0;ci<7;ci++){
+      var cg=new THREE.Group(),body=new THREE.CylinderGeometry(0.07,0.07,0.42,8);
+      cg.add(new THREE.Mesh(body,new THREE.MeshBasicMaterial({color:0xf4ead0})));
+      var col=new THREE.Mesh(body,outlineMat);col.scale.set(1.5,1.08,1.5);cg.add(col);
+      var fl=new THREE.Mesh(new THREE.SphereGeometry(0.07,8,8),new THREE.MeshBasicMaterial({color:0xfff1b8}));
+      fl.scale.y=1.6;fl.position.y=0.33;cg.add(fl);
+      var cgl=glowSprite(0.7,0.5);cgl.position.y=0.33;cg.add(cgl);
+      var ca=ci/7*Math.PI*2,cr=3.1+rnd(ci)*0.9;
+      cg.position.set(Math.cos(ca)*cr,2+rnd(ci+9)*4.3,Math.sin(ca)*cr);
+      cg.userData.y=cg.position.y;cg.userData.p=ci*1.7;
+      world.add(cg);candles.push(cg);
+    }
+
+    var sp=new Float32Array(120*3);
+    for(var si=0;si<120;si++){sp[si*3]=(rnd(si)-0.5)*30;sp[si*3+1]=rnd(si+200)*16;sp[si*3+2]=-14+rnd(si+400)*6;}
+    var sg=new THREE.BufferGeometry();sg.setAttribute('position',new THREE.BufferAttribute(sp,3));
+    scene.add(new THREE.Points(sg,new THREE.PointsMaterial({color:0xfff3c4,size:0.14})));
+
+    var sparks=[];
+    function burst(pos){
+      for(var i=0;i<16;i++){
+        var m=new THREE.SpriteMaterial({map:glowTex,transparent:true,opacity:1,depthWrite:false,blending:THREE.AdditiveBlending});
+        var s=new THREE.Sprite(m);s.scale.setScalar(0.28);s.position.copy(pos);
+        var a=Math.random()*6.283,b=Math.random()*3.14-1.57;
+        s.userData.v=new THREE.Vector3(Math.cos(a)*Math.cos(b),Math.sin(b),Math.sin(a)*Math.cos(b)).multiplyScalar(1+Math.random()*1.5);
+        world.add(s);sparks.push(s);
+      }
+    }
+
+    var items=[],selectedId=null,target=null,drag=null,idleAt=0;
+    var easeOutBack=function(t){var c1=1.70158,c3=c1+1;return 1+c3*Math.pow(t-1,3)+c1*Math.pow(t-1,2);};
+
+    function resize(){
+      var w=stage.clientWidth,h=stage.clientHeight;if(!w||!h)return;
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,2));
+      renderer.setSize(w,h,false);
+      camera.aspect=w/h;
+      var d=Math.max(11,8.4/(camera.aspect*0.7279));
+      camera.position.set(0,3.9,d);camera.lookAt(0,3.1,0);camera.updateProjectionMatrix();
+    }
+    if(window.ResizeObserver)new ResizeObserver(resize).observe(stage);else window.addEventListener('resize',resize);
+    resize();
+
+    var ray=new THREE.Raycaster(),ndc=new THREE.Vector2();
+    function hitAt(e){
+      var r=canvas.getBoundingClientRect();
+      ndc.set(((e.clientX-r.left)/r.width)*2-1,-((e.clientY-r.top)/r.height)*2+1);
+      ray.setFromCamera(ndc,camera);
+      var hits=ray.intersectObjects(items.map(function(i){return i.hit;}),false);
+      return hits.length?hits[0].object.userData.id:null;
+    }
+    canvas.addEventListener('pointerdown',function(e){
+      drag={x:e.clientX,t:performance.now(),moved:false,rot:world.rotation.y};
+      target=null;try{canvas.setPointerCapture(e.pointerId);}catch(_){}
+    });
+    canvas.addEventListener('pointermove',function(e){
+      if(drag){
+        var dx=e.clientX-drag.x;
+        if(Math.abs(dx)>5)drag.moved=true;
+        if(drag.moved)world.rotation.y=drag.rot+dx*0.008;
+      }else{canvas.style.cursor=hitAt(e)?'pointer':'grab';}
+    });
+    canvas.addEventListener('pointerup',function(e){
+      if(drag&&!drag.moved&&performance.now()-drag.t<500)onPick(hitAt(e));
+      drag=null;idleAt=performance.now();
+    });
+    canvas.addEventListener('pointercancel',function(){drag=null;});
+
+    var last=performance.now();
+    function frame(now){
+      var dt=Math.min((now-last)/1000,0.05);last=now;
+      if(target!==null){
+        var d=wrap(target-world.rotation.y);
+        if(reduce){world.rotation.y=target;target=null;}
+        else{world.rotation.y+=d*Math.min(1,dt*5);if(Math.abs(d)<0.01)target=null;}
+      }else if(!reduce&&!drag&&selectedId===null&&now-idleAt>2500){world.rotation.y+=dt*0.12;}
+
+      items.forEach(function(it){
+        var s=1;
+        if(it.born){
+          var t=(now-it.born)/900;
+          if(t>=1)it.born=0;else s=Math.max(0.001,easeOutBack(Math.max(t,0)));
+        }
+        if(!it.born&&it.id===selectedId&&!reduce)s=1+0.15*Math.sin(now*0.006);
+        it.grp.scale.setScalar(s);
+      });
+      if(!reduce){
+        top.scale.setScalar(1+0.06*Math.sin(now*0.003));
+        candles.forEach(function(c){c.position.y=c.userData.y+Math.sin(now*0.001+c.userData.p)*0.12;});
+      }
+      for(var i=sparks.length-1;i>=0;i--){
+        var s2=sparks[i];
+        s2.position.addScaledVector(s2.userData.v,dt);s2.userData.v.multiplyScalar(0.96);
+        s2.material.opacity-=dt*1.1;
+        if(s2.material.opacity<=0){world.remove(s2);s2.material.dispose();sparks.splice(i,1);}
+      }
+      renderer.render(scene,camera);
+      requestAnimationFrame(frame);
+    }
+    requestAnimationFrame(frame);
+
+    return {
+      add:function(w,animate){
+        var s=slot(w.id),o=makeOrnament(w.shape,w.id);
+        o.grp.position.set(s.x,s.y,s.z);o.grp.rotation.set(-0.3,s.phi,0);
+        if(animate&&!reduce){o.grp.scale.setScalar(0.001);burst(o.grp.position);}
+        world.add(o.grp);
+        items.push({id:w.id,grp:o.grp,hit:o.hit,phi:s.phi,born:animate&&!reduce?performance.now():0});
+      },
+      remove:function(id){
+        for(var i=0;i<items.length;i++)if(items[i].id===id){world.remove(items[i].grp);items.splice(i,1);return;}
+      },
+      faceTo:function(id){
+        for(var i=0;i<items.length;i++)if(items[i].id===id){target=-items[i].phi;return;}
+      },
+      setSelected:function(id){selectedId=id;}
+    };
+  }
+
+  /* ---------- Datos (Supabase) ---------- */
+  var sb=null;
+  try{sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);}catch(e){sb=null;}
+
+  var wishes=[],known={},tree,isMod=false,selectedWishId=null,loadedOnce=false;
+  var card=$('card'),list=$('list');
+  var PANELS=['formEmail','formCode','form','done'];
+  function show(name){PANELS.forEach(function(p){$(p).hidden=(p!==name);});}
+
+  function updateCount(){
+    var n=wishes.length;$('total').textContent=n+(n===1?' deseo':' deseos');
+  }
+  function renderList(){
+    list.textContent='';
+    wishes.slice().reverse().forEach(function(w){
+      var li=document.createElement('li'),b=document.createElement('button');
+      b.type='button';b.textContent=(SHAPES[w.shape]||'Estrella')+' · '+w.text;
+      b.addEventListener('click',function(){select(w.id);$('stage').scrollIntoView({behavior:reduce?'auto':'smooth',block:'center'});});
+      li.appendChild(b);list.appendChild(li);
+    });
+  }
+  function select(id){
+    tree.setSelected(id);
+    selectedWishId=id;
+    if(id===null){card.hidden=true;return;}
+    var w=known[id];
+    if(!w){card.hidden=true;selectedWishId=null;tree.setSelected(null);return;}
+    $('cardMeta').textContent='Deseo anónimo · '+(SHAPES[w.shape]||'Estrella');
+    $('cardText').textContent=w.text;
+    $('del').hidden=!isMod;
+    card.hidden=false;tree.faceTo(id);
+  }
+  function addWish(id,shape,text,animate){
+    if(known[id])return known[id];
+    var w={id:id,shape:shape,text:text};
+    known[id]=w;wishes.push(w);wishes.sort(function(a,b){return a.id-b.id;});
+    tree.add(w,animate);updateCount();renderList();return w;
+  }
+  function removeWish(id){
+    if(!known[id])return;
+    delete known[id];
+    wishes=wishes.filter(function(w){return w.id!==id;});
+    tree.remove(id);
+    if(selectedWishId===id)select(null);
+    updateCount();renderList();
+  }
+  function sync(){
+    if(!sb)return Promise.resolve();
+    return sb.from('wishes').select('id,shape,message').order('id',{ascending:true}).limit(1000).then(function(r){
+      if(r.error||!r.data){
+        if(!loadedOnce)$('total').textContent='No se pudieron cargar los deseos';
+        return;
+      }
+      var present={};
+      r.data.forEach(function(row){present[row.id]=true;});
+      wishes.slice().forEach(function(w){if(!present[w.id])removeWish(w.id);});
+      r.data.forEach(function(row){if(!known[row.id])addWish(row.id,row.shape,row.message,loadedOnce);});
+      loadedOnce=true;updateCount();
+    },function(){
+      if(!loadedOnce)$('total').textContent='No se pudieron cargar los deseos';
+    });
+  }
+
+  tree=build3D(select);
+  $('close').addEventListener('click',function(){select(null);});
+
+  /* ---------- Registro con código por correo ---------- */
+  var emailNow='',cooldownTimer=null;
+  var mailIn=$('mailIn'),codeIn=$('codeIn');
+  var errEmail=$('errEmail'),errCode=$('errCode'),err=$('err');
+  var EMAIL_RE=/^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+  function sendErr(e){
+    var m=((e&&e.message)||'').toLowerCase();
+    if(m.indexOf('rate limit')>-1||m.indexOf('security purposes')>-1||m.indexOf('seconds')>-1)return 'Pediste varios códigos seguidos. Espera un minuto e intenta de nuevo.';
+    if(m.indexOf('email')>-1&&m.indexOf('invalid')>-1)return 'Ese correo no parece válido. Revísalo.';
+    return 'No pudimos enviar el código. Intenta de nuevo en un momento.';
+  }
+  function startCooldown(){
+    var btn=$('resend'),n=60;
+    btn.disabled=true;
+    clearInterval(cooldownTimer);
+    btn.textContent='Reenviar código ('+n+')';
+    cooldownTimer=setInterval(function(){
+      n--;
+      if(n<=0){clearInterval(cooldownTimer);btn.disabled=false;btn.textContent='Reenviar código';}
+      else btn.textContent='Reenviar código ('+n+')';
+    },1000);
+  }
+  function sendCode(email,fromResend){
+    var btn=$('btnEmail');
+    btn.disabled=true;
+    return sb.auth.signInWithOtp({email:email,options:{shouldCreateUser:true}}).then(function(r){
+      btn.disabled=false;
+      if(r.error){
+        if(fromResend){errCode.textContent=sendErr(r.error);}else{errEmail.textContent=sendErr(r.error);}
+        return false;
+      }
+      emailNow=email;
+      $('codeHelp').textContent='Te mandamos un código a '+email+'. Si no aparece, mira la carpeta de spam o correo no deseado.';
+      errCode.textContent='';codeIn.value='';
+      show('formCode');startCooldown();codeIn.focus();
+      return true;
+    },function(){
+      btn.disabled=false;
+      var msg='No hay conexión. Revisa internet e intenta de nuevo.';
+      if(fromResend)errCode.textContent=msg;else errEmail.textContent=msg;
+      return false;
+    });
+  }
+
+  $('formEmail').addEventListener('submit',function(ev){
+    ev.preventDefault();
+    if(!sb){errEmail.textContent='La página no pudo conectarse. Recárgala e intenta de nuevo.';return;}
+    var email=mailIn.value.trim().toLowerCase();
+    if(!EMAIL_RE.test(email)){errEmail.textContent='Revisa el correo: parece incompleto.';mailIn.focus();return;}
+    errEmail.textContent='';
+    sendCode(email,false);
+  });
+  $('resend').addEventListener('click',function(){
+    if(emailNow)sendCode(emailNow,true);
+  });
+  $('changeMail').addEventListener('click',function(){
+    clearInterval(cooldownTimer);errEmail.textContent='';show('formEmail');mailIn.focus();
+  });
+  codeIn.addEventListener('input',function(){codeIn.value=codeIn.value.replace(/\D/g,'');});
+
+  $('formCode').addEventListener('submit',function(ev){
+    ev.preventDefault();
+    var token=codeIn.value.replace(/\D/g,'');
+    if(token.length<6){errCode.textContent='Escribe el código completo (son 6 números).';codeIn.focus();return;}
+    errCode.textContent='';
+    var btn=$('btnCode');btn.disabled=true;
+    sb.auth.verifyOtp({email:emailNow,token:token,type:'email'}).then(function(r){
+      btn.disabled=false;
+      if(r.error||!r.data||!r.data.session){errCode.textContent='El código no es correcto o ya venció. Revisa el correo o pide uno nuevo.';return;}
+      clearInterval(cooldownTimer);
+      return afterLogin(r.data.session);
+    },function(){
+      btn.disabled=false;errCode.textContent='No hay conexión. Revisa internet e intenta de nuevo.';
+    });
+  });
+
+  function afterLogin(session){
+    $('sessEmail').textContent=session.user&&session.user.email?session.user.email:'';
+    $('sess').hidden=false;
+    return Promise.all([sb.rpc('is_moderator'),sb.rpc('has_wished')]).then(function(res){
+      isMod=res[0]&&res[0].data===true;
+      var has=res[1]&&res[1].data===true;
+      $('modNote').hidden=!isMod;
+      if(selectedWishId!==null)$('del').hidden=!isMod;
+      show(has?'done':'form');
+    },function(){
+      isMod=false;show('form');
+    });
+  }
+  function loggedOut(){
+    isMod=false;$('sess').hidden=true;$('modNote').hidden=true;$('del').hidden=true;
+    mailIn.value='';show('formEmail');
+  }
+  $('logout').addEventListener('click',function(){
+    sb.auth.signOut().then(loggedOut,loggedOut);
+  });
+
+  /* ---------- Colgar deseo ---------- */
+  var wish=$('wish'),form=$('form');
+  wish.addEventListener('input',function(){$('count').textContent=wish.value.length+'/200';});
+  form.addEventListener('submit',function(ev){
+    ev.preventDefault();
+    var text=wish.value.trim();
+    var shape=form.querySelector('input[name=shape]:checked').value;
+    if(text.length<3){err.textContent='Escribe tu deseo (mínimo 3 letras).';wish.focus();return;}
+    err.textContent='';
+    var btn=$('btnWish');btn.disabled=true;
+    sb.from('wishes').insert({shape:shape,message:text}).select('id,shape,message').single().then(function(r){
+      btn.disabled=false;
+      if(r.error){
+        if(r.error.code==='23505'){show('done');}
+        else err.textContent='No pudimos guardar tu deseo. Si pasó mucho tiempo, sal y vuelve a entrar con tu correo.';
+        return;
+      }
+      var w=addWish(r.data.id,r.data.shape,r.data.message,true);
+      show('done');
+      $('stage').scrollIntoView({behavior:reduce?'auto':'smooth',block:'center'});
+      select(w.id);
+    },function(){
+      btn.disabled=false;err.textContent='No hay conexión. Revisa internet e intenta de nuevo.';
+    });
+  });
+
+  /* ---------- Moderación: borrar ---------- */
+  $('del').addEventListener('click',function(){
+    if(selectedWishId===null||!isMod)return;
+    if(!window.confirm('¿Borrar este deseo para siempre?'))return;
+    var id=selectedWishId;
+    sb.from('wishes').delete().eq('id',id).select('id').then(function(r){
+      if(r.error||!r.data||!r.data.length){window.alert('No se pudo borrar el deseo.');return;}
+      removeWish(id);
+    },function(){window.alert('No hay conexión. Intenta de nuevo.');});
+  });
+
+  /* ---------- Arranque ---------- */
+  if(!sb){
+    $('total').textContent='Sin conexión con el servidor';
+    show('formEmail');
+  }else{
+    sync();
+    setInterval(function(){if(!document.hidden)sync();},30000);
+    sb.auth.getSession().then(function(r){
+      var s=r&&r.data&&r.data.session;
+      if(s)afterLogin(s);else show('formEmail');
+    },function(){show('formEmail');});
+  }
+})();
+</script>
+</body>
+</html>
