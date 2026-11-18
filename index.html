@@ -347,17 +347,20 @@ summary{cursor:pointer;font:600 16px/1.3 var(--body)}
     top.add(topOl,new THREE.Mesh(topGeo,yellowMat),glowSprite(2.1,0.6));
     top.position.y=6.6;world.add(top);
 
+    /* Velas flotando alrededor del árbol, de distintas alturas y tamaños */
     var candles=[];
-    for(var ci=0;ci<7;ci++){
-      var cg=new THREE.Group(),body=new THREE.CylinderGeometry(0.07,0.07,0.42,8);
-      cg.add(new THREE.Mesh(body,new THREE.MeshBasicMaterial({color:0xf4ead0})));
-      var col=new THREE.Mesh(body,outlineMat);col.scale.set(1.5,1.08,1.5);cg.add(col);
-      var fl=new THREE.Mesh(new THREE.SphereGeometry(0.07,8,8),new THREE.MeshBasicMaterial({color:0xfff1b8}));
-      fl.scale.y=1.6;fl.position.y=0.33;cg.add(fl);
-      var cgl=glowSprite(0.7,0.5);cgl.position.y=0.33;cg.add(cgl);
-      var ca=ci/7*Math.PI*2,cr=3.1+rnd(ci)*0.9;
-      cg.position.set(Math.cos(ca)*cr,2+rnd(ci+9)*4.3,Math.sin(ca)*cr);
-      cg.userData.y=cg.position.y;cg.userData.p=ci*1.7;
+    var candleGeo=new THREE.CylinderGeometry(1,1,1,8),flameGeo=new THREE.SphereGeometry(1,8,8);
+    var waxMat=new THREE.MeshBasicMaterial({color:0xf4ead0}),flameMat=new THREE.MeshBasicMaterial({color:0xfff1b8});
+    for(var ci=0;ci<34;ci++){
+      var cg=new THREE.Group(),ch=0.35+rnd(ci*5+4)*0.6,cw=0.07+rnd(ci*5+5)*0.03;
+      var wax=new THREE.Mesh(candleGeo,waxMat);wax.scale.set(cw,ch,cw);
+      var edge=new THREE.Mesh(candleGeo,outlineMat);edge.scale.set(cw+0.03,ch+0.06,cw+0.03);
+      var fl=new THREE.Mesh(flameGeo,flameMat);fl.scale.set(0.055,0.11,0.055);fl.position.y=ch/2+0.1;
+      var cgl=glowSprite(0.9,0.5);cgl.position.y=ch/2+0.1;
+      cg.add(wax,edge,fl,cgl);
+      var ca=rnd(ci*5+1)*Math.PI*2,cr=3+rnd(ci*5+2)*2.6;
+      cg.position.set(Math.cos(ca)*cr,0.9+rnd(ci*5+3)*6.3,Math.sin(ca)*cr);
+      cg.userData={y:cg.position.y,p:rnd(ci+50)*6.28,sp:0.0007+rnd(ci+80)*0.0006,fl:fl,gl:cgl};
       world.add(cg);candles.push(cg);
     }
 
@@ -436,7 +439,12 @@ summary{cursor:pointer;font:600 16px/1.3 var(--body)}
       });
       if(!reduce){
         top.scale.setScalar(1+0.06*Math.sin(now*0.003));
-        candles.forEach(function(c){c.position.y=c.userData.y+Math.sin(now*0.001+c.userData.p)*0.12;});
+        candles.forEach(function(c){
+          var u=c.userData;
+          c.position.y=u.y+Math.sin(now*u.sp+u.p)*0.2;
+          u.fl.scale.y=0.11*(1+0.18*Math.sin(now*0.02+u.p*7));
+          u.gl.material.opacity=0.45+0.12*Math.sin(now*0.013+u.p*5);
+        });
       }
       for(var i=sparks.length-1;i>=0;i--){
         var s2=sparks[i];
