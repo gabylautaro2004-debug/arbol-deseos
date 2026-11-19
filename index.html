@@ -127,6 +127,14 @@ summary{cursor:pointer;font:600 16px/1.3 var(--body)}
 }
 .list button:hover{background:#ecd98d}
 .note{margin:0;font-size:14px;line-height:1.35;color:#5a4b36}
+.review{border-top:2px dashed #b8a574;padding-top:12px}
+.review h3{margin:0 0 8px;font:400 22px/1.1 var(--display)}
+.rev{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:8px;max-height:300px;overflow-y:auto}
+.rev li{display:grid;grid-template-columns:1fr auto auto;gap:6px;align-items:center;background:var(--paper-2);border:1.5px solid var(--ink);border-radius:6px 3px 7px 3px;padding:8px 10px}
+.rev p{margin:0;font-size:16px;line-height:1.3;overflow-wrap:anywhere}
+.rev button{font:600 14px/1 var(--body);border:2px solid var(--ink);border-radius:6px 3px 7px 3px;padding:7px 9px;cursor:pointer;background:var(--gold);color:var(--ink)}
+.rev button.no{background:#f3c9b8;color:#6e1f0c}
+.rev button:focus-visible{outline:3px solid var(--ember);outline-offset:2px}
 @media (prefers-reduced-motion:reduce){.btn:hover,.btn:active{transform:none}}
 </style>
 </head>
@@ -209,10 +217,16 @@ summary{cursor:pointer;font:600 16px/1.3 var(--body)}
 
       <!-- Paso 4: listo -->
       <div class="done" id="done" hidden>
-        <p class="big">Listo, tu deseo ya cuelga del árbol.</p>
+        <p class="big" id="doneBig">Listo, tu deseo ya cuelga del árbol.</p>
+        <p id="pendNote" hidden>Un moderador lo va a revisar y, si está todo bien, aparece en el árbol.</p>
         <p>Cada persona puede colgar un solo deseo. El 24 de diciembre a la noche te llega el saludo de Navidad al correo.</p>
-        <p class="note" id="modNote" hidden>Eres moderador: al tocar un deseo vas a ver el botón para borrarlo.</p>
+        <p class="note" id="modNote" hidden>Eres moderador: abajo ves los deseos por revisar, y al tocar un deseo en el árbol puedes borrarlo.</p>
       </div>
+
+      <section class="review" id="review" hidden>
+        <h3>Por revisar (<span id="revCount">0</span>)</h3>
+        <ul class="rev" id="revList"></ul>
+      </section>
 
       <details class="all">
         <summary>Leer todos los deseos</summary>
@@ -364,6 +378,33 @@ summary{cursor:pointer;font:600 16px/1.3 var(--body)}
       world.add(cg);candles.push(cg);
     }
 
+    /* Luces de Navidad de colores: guirnalda en espiral alrededor del árbol */
+    function treeR(y){
+      var m=0;
+      TIERS.forEach(function(t){var f=(y-t.y)/t.h;if(f>=0&&f<=1)m=Math.max(m,t.rb*(1-f));});
+      return m;
+    }
+    var whiteGlow=(function(){
+      var c=document.createElement('canvas');c.width=c.height=64;var x=c.getContext('2d');
+      var g=x.createRadialGradient(32,32,0,32,32,32);
+      g.addColorStop(0,'rgba(255,255,255,1)');g.addColorStop(1,'rgba(255,255,255,0)');
+      x.fillStyle=g;x.fillRect(0,0,64,64);return new THREE.CanvasTexture(c);
+    })();
+    var lights=[],LCOL=[0xff4b4b,0x4aa8ff,0x4cf08a,0xff7ad9,0xb48cff];
+    var bulbGeo=new THREE.SphereGeometry(0.07,8,6);
+    var bulbMats=LCOL.map(function(c){return new THREE.MeshBasicMaterial({color:c});});
+    var wirePts=[];
+    for(var li=0;li<72;li++){
+      var lt=li/71,ly=0.95+lt*4.95,lr=Math.max(0.22,treeR(ly))+0.14,la=lt*Math.PI*2*3.4;
+      var lp=new THREE.Vector3(Math.cos(la)*lr,ly,Math.sin(la)*lr);
+      wirePts.push(lp);
+      var bulb=new THREE.Mesh(bulbGeo,bulbMats[li%5]);bulb.position.copy(lp);
+      var lg=new THREE.Sprite(new THREE.SpriteMaterial({map:whiteGlow,color:LCOL[li%5],transparent:true,opacity:0.7,depthWrite:false,blending:THREE.AdditiveBlending}));
+      lg.scale.set(0.5,0.5,1);lg.position.copy(lp);
+      world.add(bulb,lg);lights.push({g:lg,p:(li%3)*2.1});
+    }
+    world.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(wirePts),new THREE.LineBasicMaterial({color:0x0b2b1e})));
+
     var sp=new Float32Array(120*3);
     for(var si=0;si<120;si++){sp[si*3]=(rnd(si)-0.5)*30;sp[si*3+1]=rnd(si+200)*16;sp[si*3+2]=-14+rnd(si+400)*6;}
     var sg=new THREE.BufferGeometry();sg.setAttribute('position',new THREE.BufferAttribute(sp,3));
@@ -445,6 +486,7 @@ summary{cursor:pointer;font:600 16px/1.3 var(--body)}
           u.fl.scale.y=0.11*(1+0.18*Math.sin(now*0.02+u.p*7));
           u.gl.material.opacity=0.45+0.12*Math.sin(now*0.013+u.p*5);
         });
+        lights.forEach(function(l){l.g.material.opacity=0.45+0.4*Math.sin(now*0.004+l.p);});
       }
       for(var i=sparks.length-1;i>=0;i--){
         var s2=sparks[i];
@@ -479,7 +521,7 @@ summary{cursor:pointer;font:600 16px/1.3 var(--body)}
   var sb=null;
   try{sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);}catch(e){sb=null;}
 
-  var wishes=[],known={},tree,isMod=false,selectedWishId=null,loadedOnce=false;
+  var wishes=[],pending=[],known={},tree,isMod=false,selectedWishId=null,loadedOnce=false;
   var card=$('card'),list=$('list');
   var PANELS=['formEmail','formCode','form','done'];
   function show(name){PANELS.forEach(function(p){$(p).hidden=(p!==name);});}
@@ -521,17 +563,47 @@ summary{cursor:pointer;font:600 16px/1.3 var(--body)}
     if(selectedWishId===id)select(null);
     updateCount();renderList();
   }
+  function showDone(pend){
+    $('doneBig').textContent=pend?'Tu deseo quedó en revisión.':'Listo, tu deseo ya cuelga del árbol.';
+    $('pendNote').hidden=!pend;
+    show('done');
+  }
+  function renderReview(){
+    $('review').hidden=!isMod;
+    $('revCount').textContent=pending.length;
+    var ul=$('revList');ul.textContent='';
+    pending.forEach(function(w){
+      var li=document.createElement('li'),p=document.createElement('p'),ok=document.createElement('button'),no=document.createElement('button');
+      p.textContent=(SHAPES[w.shape]||'')+' · '+w.text;
+      ok.type=no.type='button';ok.textContent='Aprobar';no.textContent='Borrar';no.className='no';
+      ok.addEventListener('click',function(){review(w.id,true);});
+      no.addEventListener('click',function(){review(w.id,false);});
+      li.append(p,ok,no);ul.appendChild(li);
+    });
+  }
+  function review(id,approve){
+    if(!approve&&!window.confirm('¿Borrar este deseo para siempre?'))return;
+    var q=approve?sb.from('wishes').update({status:'approved'}).eq('id',id).select('id'):sb.from('wishes').delete().eq('id',id).select('id');
+    q.then(function(r){
+      if(r.error||!r.data||!r.data.length){window.alert('No se pudo completar. Intenta de nuevo.');return;}
+      sync();
+    },function(){window.alert('No hay conexión. Intenta de nuevo.');});
+  }
   function sync(){
     if(!sb)return Promise.resolve();
-    return sb.from('wishes').select('id,shape,message').order('id',{ascending:true}).limit(1000).then(function(r){
+    return sb.from('wishes').select('id,shape,message,status').order('id',{ascending:true}).limit(1000).then(function(r){
       if(r.error||!r.data){
         if(!loadedOnce)$('total').textContent='No se pudieron cargar los deseos';
         return;
       }
-      var present={};
-      r.data.forEach(function(row){present[row.id]=true;});
+      var present={},pend=[];
+      r.data.forEach(function(row){
+        if(row.status==='pending'){if(isMod)pend.push({id:row.id,shape:row.shape,text:row.message});return;}
+        present[row.id]=true;
+      });
+      pending=pend;renderReview();
       wishes.slice().forEach(function(w){if(!present[w.id])removeWish(w.id);});
-      r.data.forEach(function(row){if(!known[row.id])addWish(row.id,row.shape,row.message,loadedOnce);});
+      r.data.forEach(function(row){if(row.status!=='pending'&&!known[row.id])addWish(row.id,row.shape,row.message,loadedOnce);});
       loadedOnce=true;updateCount();
     },function(){
       if(!loadedOnce)$('total').textContent='No se pudieron cargar los deseos';
@@ -621,18 +693,19 @@ summary{cursor:pointer;font:600 16px/1.3 var(--body)}
   function afterLogin(session){
     $('sessEmail').textContent=session.user&&session.user.email?session.user.email:'';
     $('sess').hidden=false;
-    return Promise.all([sb.rpc('is_moderator'),sb.rpc('has_wished')]).then(function(res){
+    return Promise.all([sb.rpc('is_moderator'),sb.rpc('my_wish_status')]).then(function(res){
       isMod=res[0]&&res[0].data===true;
-      var has=res[1]&&res[1].data===true;
+      var st=res[1]&&res[1].data;
       $('modNote').hidden=!isMod;
       if(selectedWishId!==null)$('del').hidden=!isMod;
-      show(has?'done':'form');
+      if(st)showDone(st==='pending');else show('form');
+      if(isMod)sync();
     },function(){
       isMod=false;show('form');
     });
   }
   function loggedOut(){
-    isMod=false;$('sess').hidden=true;$('modNote').hidden=true;$('del').hidden=true;
+    isMod=false;pending=[];renderReview();$('sess').hidden=true;$('modNote').hidden=true;$('del').hidden=true;
     mailIn.value='';show('formEmail');
   }
   $('logout').addEventListener('click',function(){
@@ -649,15 +722,16 @@ summary{cursor:pointer;font:600 16px/1.3 var(--body)}
     if(text.length<3){err.textContent='Escribe tu deseo (mínimo 3 letras).';wish.focus();return;}
     err.textContent='';
     var btn=$('btnWish');btn.disabled=true;
-    sb.from('wishes').insert({shape:shape,message:text}).select('id,shape,message').single().then(function(r){
+    sb.from('wishes').insert({shape:shape,message:text}).select('id,shape,message,status').single().then(function(r){
       btn.disabled=false;
       if(r.error){
-        if(r.error.code==='23505'){show('done');}
+        if(r.error.code==='23505'){sb.rpc('my_wish_status').then(function(x){showDone(x&&x.data==='pending');});}
         else err.textContent='No pudimos guardar tu deseo. Si pasó mucho tiempo, sal y vuelve a entrar con tu correo.';
         return;
       }
+      if(r.data.status==='pending'){showDone(true);return;}
       var w=addWish(r.data.id,r.data.shape,r.data.message,true);
-      show('done');
+      showDone(false);
       $('stage').scrollIntoView({behavior:reduce?'auto':'smooth',block:'center'});
       select(w.id);
     },function(){
