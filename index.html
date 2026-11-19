@@ -348,10 +348,9 @@ summary{cursor:pointer;font:600 16px/1.3 var(--body)}
     }
     /* La posición depende del id del deseo: así no se mueve si se borra otro */
     function slot(i){
-      var u=frac(i*0.6180339+0.13),W=[0.4,0.7,0.9,1],t=0;
-      while(u>W[t])t++;
-      var T=TIERS[t],f=0.1+0.62*frac(i*0.7548776+0.31),a=i*2.399963;
-      var y=T.y+f*T.h,r=T.rb*(1-f)+0.12;
+      /* Altura repartida según el ancho del árbol y siempre por fuera de su superficie */
+      var u=frac(i*0.7548776+0.31),a=i*2.399963;
+      var y=0.9+5*(1-Math.sqrt(1-u*0.98)),r=treeR(y)*1.14+0.1;
       return {x:Math.cos(a)*r,y:y,z:Math.sin(a)*r,phi:Math.atan2(Math.cos(a),Math.sin(a))};
     }
 
@@ -395,7 +394,7 @@ summary{cursor:pointer;font:600 16px/1.3 var(--body)}
     var bulbMats=LCOL.map(function(c){return new THREE.MeshBasicMaterial({color:c});});
     var wirePts=[];
     for(var li=0;li<72;li++){
-      var lt=li/71,ly=0.95+lt*4.95,lr=Math.max(0.22,treeR(ly))+0.14,la=lt*Math.PI*2*3.4;
+      var lt=li/71,ly=0.95+lt*4.95,lr=Math.max(0.22,treeR(ly))*1.12+0.12,la=lt*Math.PI*2*3.4;
       var lp=new THREE.Vector3(Math.cos(la)*lr,ly,Math.sin(la)*lr);
       wirePts.push(lp);
       var bulb=new THREE.Mesh(bulbGeo,bulbMats[li%5]);bulb.position.copy(lp);
