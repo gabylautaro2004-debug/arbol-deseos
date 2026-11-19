@@ -135,6 +135,10 @@ summary{cursor:pointer;font:600 16px/1.3 var(--body)}
 .rev button{font:600 14px/1 var(--body);border:2px solid var(--ink);border-radius:6px 3px 7px 3px;padding:7px 9px;cursor:pointer;background:var(--gold);color:var(--ink)}
 .rev button.no{background:#f3c9b8;color:#6e1f0c}
 .rev button:focus-visible{outline:3px solid var(--ember);outline-offset:2px}
+.foxbtn{position:absolute;bottom:12px;right:12px;font:600 15px/1.1 var(--body);background:var(--gold);color:var(--ink);border:2px solid var(--ink);border-radius:10px 4px 12px 5px;padding:9px 12px;box-shadow:3px 3px 0 var(--ink);cursor:pointer;max-width:160px}
+.card .next{margin-top:10px;font:600 15px/1 var(--body);background:var(--gold);color:var(--ink);border:2px solid var(--ink);border-radius:8px 3px 9px 4px;padding:8px 12px;cursor:pointer}
+.card .info{margin:4px 0 0;font-size:16px;line-height:1.3;color:#5a4b36}
+.foxbtn:focus-visible,.card .next:focus-visible{outline:3px solid var(--ember);outline-offset:2px}
 @media (prefers-reduced-motion:reduce){.btn:hover,.btn:active{transform:none}}
 </style>
 </head>
@@ -150,12 +154,20 @@ summary{cursor:pointer;font:600 16px/1.3 var(--body)}
   <main class="grid">
     <section class="stage" id="stage" aria-label="Árbol de Navidad en 3D">
       <canvas id="gl"></canvas>
-      <div class="hud"><strong id="total">0 deseos</strong><span>Toca una luz para leerla. Arrastra para girar el árbol.</span></div>
+      <div class="hud"><strong id="total">0 deseos</strong><span>Toca una luz para leer un deseo. Toca al zorrito para una película. Arrastra para girar el árbol.</span></div>
       <div class="card" id="card" hidden role="status" aria-live="polite">
         <button class="x" id="close" type="button" aria-label="Cerrar deseo">×</button>
         <p class="meta" id="cardMeta"></p>
         <p class="text" id="cardText"></p>
         <button class="del" id="del" type="button" hidden>Borrar este deseo (moderador)</button>
+      </div>
+      <button class="foxbtn" id="foxBtn" type="button">¿Qué película veo?</button>
+      <div class="card" id="foxCard" hidden role="status" aria-live="polite">
+        <button class="x" id="foxClose" type="button" aria-label="Cerrar recomendación">×</button>
+        <p class="meta">El zorrito te recomienda</p>
+        <p class="text" id="foxTitle"></p>
+        <p class="info" id="foxInfo"></p>
+        <button class="next" id="foxNext" type="button">Otra película</button>
       </div>
       <p class="nogl" id="nogl" hidden>Tu navegador no pudo mostrar el árbol en 3D. Igual puedes leer los deseos en la lista del costado.</p>
     </section>
@@ -300,7 +312,7 @@ summary{cursor:pointer;font:600 16px/1.3 var(--body)}
     });
     var trunk=outlined(new THREE.CylinderGeometry(0.32,0.42,1.1,8),new THREE.MeshLambertMaterial({color:0x6b4423,flatShading:true}),1.12);
     trunk.position.y=0.5;world.add(trunk);
-    var ground=outlined(new THREE.CylinderGeometry(3.5,3.7,0.25,28),new THREE.MeshLambertMaterial({color:0xe3e7f6,flatShading:true}),1.03);
+    var ground=outlined(new THREE.CylinderGeometry(3.9,4.1,0.25,32),new THREE.MeshLambertMaterial({color:0xe3e7f6,flatShading:true}),1.03);
     ground.position.y=-0.12;world.add(ground);
 
     function starShape(n,ro,ri){
@@ -420,6 +432,20 @@ summary{cursor:pointer;font:600 16px/1.3 var(--body)}
       }
     }
 
+    /* Zorrito al pie del árbol: 8 imágenes (una cada 45°) que cambian según cómo gira el árbol */
+    var FOX_H=1.7,FOX_W=FOX_H*364/365,foxFrame=0;
+    var foxTex=[0,45,90,135,180,225,270,315].map(function(a){
+      var t=new THREE.TextureLoader().load('zorrito-'+a+'.webp');
+      t.minFilter=THREE.LinearFilter;t.generateMipmaps=false;return t;
+    });
+    var foxMat=new THREE.SpriteMaterial({map:foxTex[0],transparent:true});
+    var fox=new THREE.Sprite(foxMat);
+    fox.center.set(0.5,0);fox.scale.set(FOX_W,FOX_H,1);fox.position.set(-2.3,0.03,2.1);
+    scene.add(fox);
+    var foxShadow=new THREE.Mesh(new THREE.CircleGeometry(0.75,24),new THREE.MeshBasicMaterial({color:0x0a0d28,transparent:true,opacity:0.3,depthWrite:false}));
+    foxShadow.rotation.x=-Math.PI/2;foxShadow.scale.y=0.55;foxShadow.position.set(-2.3,0.04,2.1);
+    scene.add(foxShadow);
+
     var items=[],selectedId=null,target=null,drag=null,idleAt=0;
     var easeOutBack=function(t){var c1=1.70158,c3=c1+1;return 1+c3*Math.pow(t-1,3)+c1*Math.pow(t-1,2);};
 
@@ -440,6 +466,8 @@ summary{cursor:pointer;font:600 16px/1.3 var(--body)}
       ndc.set(((e.clientX-r.left)/r.width)*2-1,-((e.clientY-r.top)/r.height)*2+1);
       ray.setFromCamera(ndc,camera);
       var hits=ray.intersectObjects(items.map(function(i){return i.hit;}),false);
+      var fh=ray.intersectObject(fox,false);
+      if(fh.length&&(!hits.length||fh[0].distance<hits[0].distance))return 'fox';
       return hits.length?hits[0].object.userData.id:null;
     }
     canvas.addEventListener('pointerdown',function(e){
@@ -493,6 +521,9 @@ summary{cursor:pointer;font:600 16px/1.3 var(--body)}
         s2.material.opacity-=dt*1.1;
         if(s2.material.opacity<=0){world.remove(s2);s2.material.dispose();sparks.splice(i,1);}
       }
+      /* el zorrito gira junto con el árbol: elige la imagen más cercana al ángulo actual */
+      var fi=Math.round((((-world.rotation.y*180/Math.PI)%360)+360)%360/45)%8;
+      if(fi!==foxFrame){foxFrame=fi;foxMat.map=foxTex[fi];}
       renderer.render(scene,camera);
       requestAnimationFrame(frame);
     }
@@ -540,6 +571,7 @@ summary{cursor:pointer;font:600 16px/1.3 var(--body)}
   function select(id){
     tree.setSelected(id);
     selectedWishId=id;
+    if(id!==null)closeFox();
     if(id===null){card.hidden=true;return;}
     var w=known[id];
     if(!w){card.hidden=true;selectedWishId=null;tree.setSelected(null);return;}
@@ -609,8 +641,34 @@ summary{cursor:pointer;font:600 16px/1.3 var(--body)}
     });
   }
 
-  tree=build3D(select);
+  /* Recomendaciones del zorrito. Lista de ejemplo: cámbienla por las películas que elijan ustedes */
+  var PELIS=[
+    {t:'Mi pobre angelito',y:1990,d:'Un chico se queda solo en casa en Navidad y la defiende de dos ladrones.'},
+    {t:'El Grinch',y:2000,d:'Un gruñón de la montaña quiere arruinarle la Navidad a todo un pueblo.'},
+    {t:'El expreso polar',y:2004,d:'Un chico sube a un tren mágico que viaja de noche hasta el Polo Norte.'},
+    {t:'Elf',y:2003,d:'Un humano criado por duendes viaja a Nueva York a buscar a su papá.'},
+    {t:'¡Qué bello es vivir!',y:1946,d:'Un hombre descubre cómo sería su pueblo si él nunca hubiera existido.'},
+    {t:'Klaus',y:2019,d:'Un cartero y un juguetero solitario inventan la tradición de los regalos.'}
+  ];
+  var lastPeli=-1;
+  function showPeli(){
+    var n;
+    do{n=Math.floor(Math.random()*PELIS.length);}while(PELIS.length>1&&n===lastPeli);
+    lastPeli=n;
+    $('foxTitle').textContent=PELIS[n].t+' ('+PELIS[n].y+')';
+    $('foxInfo').textContent=PELIS[n].d;
+  }
+  function openFox(){showPeli();select(null);$('foxCard').hidden=false;$('foxBtn').hidden=true;}
+  function closeFox(){$('foxCard').hidden=true;$('foxBtn').hidden=false;}
+  function pick(id){
+    if(id==='fox')openFox();
+    else{select(id);if(id===null)closeFox();}
+  }
+  tree=build3D(pick);
   $('close').addEventListener('click',function(){select(null);});
+  $('foxBtn').addEventListener('click',openFox);
+  $('foxNext').addEventListener('click',showPeli);
+  $('foxClose').addEventListener('click',closeFox);
 
   /* ---------- Registro con código por correo ---------- */
   var emailNow='',cooldownTimer=null;
