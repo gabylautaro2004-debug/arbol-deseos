@@ -218,6 +218,10 @@ summary{cursor:pointer;font:600 16px/1.3 var(--body)}
             <label class="shape"><input type="radio" name="shape" value="corazon"><span><svg viewBox="-12 -12 24 24" aria-hidden="true"><path d="M0 8 C-12 -1 -8 -10 0 -4 C8 -10 12 -1 0 8 Z"/></svg>Corazón</span></label>
           </div>
         </fieldset>
+        <fieldset id="specialSet" hidden>
+          <legend>Figuras especiales</legend>
+          <div class="shapes" id="specialShapes"></div>
+        </fieldset>
         <div>
           <label class="lab" for="wish">Tu deseo</label>
           <textarea id="wish" maxlength="200" rows="4" placeholder="Escribe aquí tu deseo para el año que viene"></textarea>
@@ -257,11 +261,49 @@ summary{cursor:pointer;font:600 16px/1.3 var(--body)}
   var SUPABASE_KEY='sb_publishable_ftSfGYDY3vXPc-jmo5XB-A_WkEA2RCg';
 
   var SHAPES={esfera:'Esfera',estrella:'Estrella',campana:'Campana',luna:'Luna',corazon:'Corazón'};
+
+  /* Figuras especiales (solo para los correos autorizados). Cada pieza: círculo ['c',x,y,radio],
+     rectángulo ['b',x,y,largo,alto,giro] o polígono ['p',[[x,y],...]]. Sirven para el árbol 3D y para el ícono. */
+  var FIGNAME={galleta:'Galletita de jengibre',reno:'Reno',angelito:'Angelito',copo:'Copo de nieve',santa:'Santa Claus',gorro:'Gorrito de Navidad'};
+  var FIGLAB={galleta:'Galleta',reno:'Reno',angelito:'Angelito',copo:'Copo',santa:'Santa',gorro:'Gorrito'};
+  var FIG={
+    galleta:[['c',0,.2,.115],['p',[[-.085,.13],[.085,.13],[.115,-.1],[-.115,-.1]]],['b',-.2,.07,.22,.08,-.25],['b',.2,.07,.22,.08,.25],['b',-.085,-.2,.1,.24,-.3],['b',.085,-.2,.1,.24,.3]],
+    reno:[['p',[[-.13,.08],[.13,.08],[.16,-.05],[.06,-.2],[-.06,-.2],[-.16,-.05]]],['c',0,-.2,.055],['b',-.19,.06,.12,.06,-.5],['b',.19,.06,.12,.06,.5],
+          ['b',-.12,.22,.055,.28,.3],['b',-.21,.25,.12,.05,-.6],['b',-.17,.34,.1,.05,-.4],['b',.12,.22,.055,.28,-.3],['b',.21,.25,.12,.05,.6],['b',.17,.34,.1,.05,.4]],
+    angelito:[['c',0,.2,.075],['b',0,.31,.16,.025,0],['p',[[-.06,.12],[.06,.12],[.14,-.2],[-.14,-.2]]],
+              ['p',[[-.05,.12],[-.17,.25],[-.29,.21],[-.31,.08],[-.23,-.03],[-.09,-.04]]],['p',[[.05,.12],[.17,.25],[.29,.21],[.31,.08],[.23,-.03],[.09,-.04]]]],
+    santa:[['c',.1,.27,.05],['p',[[-.14,.07],[.14,.07],[.09,.2],[.06,.24],[-.02,.22]]],['b',0,.07,.34,.07,0],['c',0,-.03,.11],['p',[[-.16,-.03],[.16,-.03],[.14,-.16],[0,-.32],[-.14,-.16]]]],
+    gorro:[['p',[[-.19,-.1],[.19,-.1],[.13,.08],[.2,.18],[.04,.2],[-.1,.1]]],['b',0,-.13,.46,.09,0],['c',.22,.19,.065]]
+  };
+  FIG.copo=[['c',0,0,.05]];
+  (function(){
+    for(var k=0;k<3;k++)FIG.copo.push(['b',0,0,.56,.045,k*Math.PI/3]);
+    for(var j=0;j<6;j++){
+      var a=j*Math.PI/3,bx=Math.cos(a)*.17,by=Math.sin(a)*.17;
+      [a+Math.PI/4,a-Math.PI/4].forEach(function(b){FIG.copo.push(['b',bx+Math.cos(b)*.05,by+Math.sin(b)*.05,.1,.04,b]);});
+    }
+  })();
+  Object.keys(FIGNAME).forEach(function(k){SHAPES[k]=FIGNAME[k];});
+  function figSvg(d){
+    var K=34,all='';
+    d.forEach(function(e){
+      if(e[0]==='c')all+='<circle cx="'+(e[1]*K).toFixed(1)+'" cy="'+(-e[2]*K).toFixed(1)+'" r="'+(e[3]*K).toFixed(1)+'"/>';
+      else if(e[0]==='b')all+='<rect x="'+((e[1]-e[3]/2)*K).toFixed(1)+'" y="'+((-e[2]-e[4]/2)*K).toFixed(1)+'" width="'+(e[3]*K).toFixed(1)+'" height="'+(e[4]*K).toFixed(1)+'" transform="rotate('+(-e[5]*180/Math.PI).toFixed(1)+' '+(e[1]*K).toFixed(1)+' '+(-e[2]*K).toFixed(1)+')"/>';
+      else all+='<polygon points="'+e[1].map(function(p){return (p[0]*K).toFixed(1)+','+(-p[1]*K).toFixed(1);}).join(' ')+'"/>';
+    });
+    return '<svg viewBox="-12 -12 24 24" aria-hidden="true"><g fill="#161431" stroke="#161431" stroke-width="2.2" stroke-linejoin="round">'+all+'</g><g fill="#f5c82e" stroke="none">'+all+'</g></svg>';
+  }
   var reduce=window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   var $=function(id){return document.getElementById(id);};
   var frac=function(x){return x-Math.floor(x);};
   var rnd=function(n){return frac(Math.sin(n*127.1+311.7)*43758.5453);};
   var wrap=function(a){a=(a+Math.PI)%(2*Math.PI);if(a<0)a+=2*Math.PI;return a-Math.PI;};
+
+  Object.keys(FIGNAME).forEach(function(k){
+    var l=document.createElement('label');l.className='shape';
+    l.innerHTML='<input type="radio" name="shape" value="'+k+'"><span>'+figSvg(FIG[k])+FIGLAB[k]+'</span>';
+    $('specialShapes').appendChild(l);
+  });
 
   /* ---------- 3D ---------- */
   function build3D(onPick){
@@ -346,6 +388,21 @@ summary{cursor:pointer;font:600 16px/1.3 var(--body)}
         var g=ext(s,3);g.scale(0.017,0.017,0.025);g.rotateZ(Math.PI);return g;
       }
     };
+    function figShapes(d){
+      return d.map(function(e){
+        var s=new THREE.Shape();
+        if(e[0]==='c'){s.absarc(e[1],e[2],e[3],0,Math.PI*2,false);return s;}
+        var pts=e[1];
+        if(e[0]==='b'){
+          var c=Math.cos(e[5]),n=Math.sin(e[5]),hw=e[3]/2,hh=e[4]/2;
+          pts=[[-hw,-hh],[hw,-hh],[hw,hh],[-hw,hh]].map(function(p){return [e[1]+p[0]*c-p[1]*n,e[2]+p[0]*n+p[1]*c];});
+        }
+        pts.forEach(function(p,i){if(i)s.lineTo(p[0],p[1]);else s.moveTo(p[0],p[1]);});
+        s.closePath();
+        return s;
+      });
+    }
+    Object.keys(FIG).forEach(function(k){G[k]=function(){return ext(figShapes(FIG[k]),0.08);};});
     var yellowMat=new THREE.MeshBasicMaterial({color:YELLOW,side:THREE.DoubleSide});
 
     function makeOrnament(shape,id){
@@ -750,8 +807,9 @@ summary{cursor:pointer;font:600 16px/1.3 var(--body)}
   function afterLogin(session){
     $('sessEmail').textContent=session.user&&session.user.email?session.user.email:'';
     $('sess').hidden=false;
-    return Promise.all([sb.rpc('is_moderator'),sb.rpc('my_wish_status')]).then(function(res){
+    return Promise.all([sb.rpc('is_moderator'),sb.rpc('my_wish_status'),sb.rpc('can_use_special')]).then(function(res){
       isMod=res[0]&&res[0].data===true;
+      $('specialSet').hidden=!(res[2]&&res[2].data===true);
       var st=res[1]&&res[1].data;
       $('modNote').hidden=!isMod;
       if(selectedWishId!==null)$('del').hidden=!isMod;
@@ -762,7 +820,9 @@ summary{cursor:pointer;font:600 16px/1.3 var(--body)}
     });
   }
   function loggedOut(){
-    isMod=false;pending=[];renderReview();$('sess').hidden=true;$('modNote').hidden=true;$('del').hidden=true;
+    isMod=false;pending=[];renderReview();$('specialSet').hidden=true;
+    document.querySelector('input[name=shape][value=estrella]').checked=true;
+    $('sess').hidden=true;$('modNote').hidden=true;$('del').hidden=true;
     mailIn.value='';show('formEmail');
   }
   $('logout').addEventListener('click',function(){
