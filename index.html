@@ -698,14 +698,29 @@ summary{cursor:pointer;font:600 16px/1.3 var(--body)}
     });
   }
 
-  /* Recomendaciones del zorrito. Lista de ejemplo: cámbienla por las películas que elijan ustedes */
+  /* Recomendaciones del zorrito: se agregan o se quitan películas en esta lista */
   var PELIS=[
     {t:'Mi pobre angelito',y:1990,d:'Un chico se queda solo en casa en Navidad y la defiende de dos ladrones.'},
     {t:'El Grinch',y:2000,d:'Un gruñón de la montaña quiere arruinarle la Navidad a todo un pueblo.'},
     {t:'El expreso polar',y:2004,d:'Un chico sube a un tren mágico que viaja de noche hasta el Polo Norte.'},
     {t:'Elf',y:2003,d:'Un humano criado por duendes viaja a Nueva York a buscar a su papá.'},
-    {t:'¡Qué bello es vivir!',y:1946,d:'Un hombre descubre cómo sería su pueblo si él nunca hubiera existido.'},
-    {t:'Klaus',y:2019,d:'Un cartero y un juguetero solitario inventan la tradición de los regalos.'}
+    {t:'Klaus',y:2019,d:'Un cartero y un juguetero solitario inventan la tradición de los regalos.'},
+    {t:'Cuento de Navidad de Mickey',y:1983,d:'Los personajes de Disney cuentan el clásico de Dickens: un avaro recibe la visita de tres fantasmas.'},
+    {t:'El extraño mundo de Jack',y:1993,d:'El rey de Halloween descubre la Navidad e intenta hacerla suya.'},
+    {t:'El origen de los guardianes',y:2012,d:'Santa y otros guardianes de la infancia se unen para frenar a un villano que quiere llenar el mundo de miedo.'},
+    {t:'Los fantasmas de Scrooge',y:2009,d:'Otra versión del cuento de Dickens: un avaro recorre su pasado, su presente y su futuro con tres espíritus.'},
+    {t:'¡Scooby-Doo! Navidades siniestras',y:2012,d:'Scooby y la pandilla investigan un misterio en plena Navidad.'},
+    {t:'El show de Truman',y:1998,d:'Un hombre descubre que toda su vida es un programa de televisión.'},
+    {t:'Charlie y la fábrica de chocolate',y:2005,d:'Un chico gana la visita a la fábrica secreta de un chocolatero excéntrico.'},
+    {t:'Saga de Harry Potter',y:'2001-2011',d:'Un chico descubre que es mago y empieza a estudiar en el colegio Hogwarts.'},
+    {t:'Saga de Narnia',y:'2005-2010',d:'Unos hermanos entran por un armario a un mundo mágico con animales que hablan.'},
+    {t:'Romeo y Julieta',y:1996,d:'La historia de amor de Shakespeare, llevada a una ciudad moderna.'},
+    {t:'10 cosas que odio de ti',y:1999,d:'En el colegio, un chico quiere conquistar a una chica, pero antes alguien tiene que salir con su hermana.'},
+    {t:'Chicas pesadas',y:2004,d:'Una chica nueva llega a un colegio dominado por el grupo de las más populares.'},
+    {t:'Diario de una pasión',y:2004,d:'Un hombre le lee a una mujer la historia de un gran amor de juventud.'},
+    {t:'El gato ensombrerado',y:2003,d:'Un gato travieso llega a la casa de dos hermanos un día de lluvia y lo desordena todo.'},
+    {t:'Hairspray',y:2007,d:'Una chica bailarina de Baltimore sueña con aparecer en el programa de baile de la tele.'},
+    {t:'Mamma mia',y:2008,d:'Una chica invita a su boda a tres hombres que podrían ser su papá, con canciones de ABBA.'}
   ];
   var lastPeli=-1;
   function showPeli(){
