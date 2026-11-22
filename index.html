@@ -418,13 +418,15 @@ summary{cursor:pointer;font:600 16px/1.3 var(--body)}
       grp.add(o,new THREE.Mesh(geo,yellowMat),glowSprite(0.95,0.55));
       var hit=new THREE.Mesh(new THREE.SphereGeometry(0.34,8,6),new THREE.MeshBasicMaterial({transparent:true,opacity:0,depthWrite:false}));
       hit.userData.id=id;grp.add(hit);
-      return {grp:grp,hit:hit};
+      geo.computeBoundingBox();
+      var bb=geo.boundingBox;
+      return {grp:grp,hit:hit,hh:Math.max(Math.abs(bb.min.y),Math.abs(bb.max.y))*1.22};
     }
     /* La posición depende del id del deseo: así no se mueve si se borra otro */
-    function slot(i){
+    function slot(i,hh){
       /* Altura repartida según el ancho del árbol y siempre por fuera de su superficie */
       var u=frac(i*0.7548776+0.31),a=i*2.399963;
-      var y=0.9+5*(1-Math.sqrt(1-u*0.98)),r=treeR(y)*1.14+0.1;
+      var y=0.9+5*(1-Math.sqrt(1-u*0.98)),r=Math.max(treeR(y),treeR(y-hh),treeR(y+hh))*1.14+0.1;
       return {x:Math.cos(a)*r,y:y,z:Math.sin(a)*r,phi:Math.atan2(Math.cos(a),Math.sin(a))};
     }
 
@@ -593,7 +595,7 @@ summary{cursor:pointer;font:600 16px/1.3 var(--body)}
 
     return {
       add:function(w,animate){
-        var s=slot(w.id),o=makeOrnament(w.shape,w.id);
+        var o=makeOrnament(w.shape,w.id),s=slot(w.id,o.hh);
         o.grp.position.set(s.x,s.y,s.z);o.grp.rotation.set(-0.3,s.phi,0);
         if(animate&&!reduce){o.grp.scale.setScalar(0.001);burst(o.grp.position);}
         world.add(o.grp);
