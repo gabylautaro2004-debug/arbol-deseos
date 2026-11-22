@@ -56,7 +56,7 @@ h1{margin:0;font:400 clamp(40px,6.5vw,68px)/1 var(--display);text-wrap:balance}
 #gl{display:block;width:100%;height:100%;touch-action:pan-y;cursor:grab}
 #gl:active{cursor:grabbing}
 .hud{
-  position:absolute;top:12px;left:12px;right:12px;display:flex;flex-direction:column;gap:2px;pointer-events:none;
+  position:absolute;top:12px;left:12px;right:112px;display:flex;flex-direction:column;gap:2px;pointer-events:none;
   font-size:15px;color:var(--dim);
 }
 .hud strong{font:400 26px/1 var(--display);color:var(--gold)}
@@ -138,7 +138,9 @@ summary{cursor:pointer;font:600 16px/1.3 var(--body)}
 .foxbtn{position:absolute;bottom:12px;right:12px;font:600 15px/1.1 var(--body);background:var(--gold);color:var(--ink);border:2px solid var(--ink);border-radius:10px 4px 12px 5px;padding:9px 12px;box-shadow:3px 3px 0 var(--ink);cursor:pointer;max-width:160px}
 .card .next{margin-top:10px;font:600 15px/1 var(--body);background:var(--gold);color:var(--ink);border:2px solid var(--ink);border-radius:8px 3px 9px 4px;padding:8px 12px;cursor:pointer}
 .card .info{margin:4px 0 0;font-size:16px;line-height:1.3;color:#5a4b36}
-.foxbtn:focus-visible,.card .next:focus-visible{outline:3px solid var(--ember);outline-offset:2px}
+.foxbtn:focus-visible,.card .next:focus-visible,.musicbtn:focus-visible{outline:3px solid var(--ember);outline-offset:2px}
+.musicbtn{position:absolute;top:12px;right:12px;display:flex;align-items:center;gap:6px;font:600 14px/1 var(--body);background:rgba(15,18,48,.75);color:var(--paper);border:2px solid #3b4086;border-radius:10px 4px 12px 5px;padding:8px 10px;cursor:pointer}
+.musicbtn svg{display:block}
 @media (prefers-reduced-motion:reduce){.btn:hover,.btn:active{transform:none}}
 </style>
 </head>
@@ -161,6 +163,8 @@ summary{cursor:pointer;font:600 16px/1.3 var(--body)}
         <p class="text" id="cardText"></p>
         <button class="del" id="del" type="button" hidden>Borrar este deseo (moderador)</button>
       </div>
+      <button class="musicbtn" id="musicBtn" type="button" aria-pressed="false" aria-label="Activar la música"><span id="musicIco"></span>Música</button>
+      <audio id="bgm" src="musica.mp3" loop preload="none"></audio>
       <button class="foxbtn" id="foxBtn" type="button">¿Qué película veo?</button>
       <div class="card" id="foxCard" hidden role="status" aria-live="polite">
         <button class="x" id="foxClose" type="button" aria-label="Cerrar recomendación">×</button>
@@ -249,6 +253,7 @@ summary{cursor:pointer;font:600 16px/1.3 var(--body)}
         <ul class="list" id="list"></ul>
       </details>
       <p class="note">Los deseos son anónimos y públicos. Tu correo no se muestra en el árbol.</p>
+      <p class="note">Música: «We Wish You a Merry Christmas», de Maksym Malko.</p>
     </aside>
   </main>
 </div>
@@ -741,6 +746,40 @@ summary{cursor:pointer;font:600 16px/1.3 var(--body)}
   $('foxBtn').addEventListener('click',openFox);
   $('foxNext').addEventListener('click',showPeli);
   $('foxClose').addEventListener('click',closeFox);
+
+  /* Música de fondo: arranca con el primer toque (los navegadores no dejan que suene sola) */
+  var bgm=$('bgm'),musicBtn=$('musicBtn'),musicOn=false,musicOff=false;
+  try{musicOff=localStorage.getItem('musicOff')==='1';}catch(e){}
+  bgm.volume=0.5;
+  var ICO='<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9H4z" fill="currentColor"/>';
+  var ICO_ON=ICO+'<path d="M16.5 8.5a5 5 0 0 1 0 7"/><path d="M19 6a8.5 8.5 0 0 1 0 12"/></svg>';
+  var ICO_OFF=ICO+'<path d="M17 9l5 6M22 9l-5 6"/></svg>';
+  function paintMusic(){
+    musicBtn.setAttribute('aria-pressed',musicOn?'true':'false');
+    musicBtn.setAttribute('aria-label',musicOn?'Silenciar la música':'Activar la música');
+    $('musicIco').innerHTML=musicOn?ICO_ON:ICO_OFF;
+  }
+  function playMusic(){
+    var p=bgm.play();
+    if(p&&p.then)p.then(function(){musicOn=true;paintMusic();},function(){musicOn=false;paintMusic();});
+    else{musicOn=true;paintMusic();}
+  }
+  function setMusicOff(off){
+    try{if(off)localStorage.setItem('musicOff','1');else localStorage.removeItem('musicOff');}catch(e){}
+  }
+  musicBtn.addEventListener('click',function(){
+    if(musicOn){bgm.pause();musicOn=false;paintMusic();setMusicOff(true);}
+    else{playMusic();setMusicOff(false);}
+  });
+  function firstTouch(ev){
+    if(musicBtn.contains(ev.target))return;
+    document.removeEventListener('click',firstTouch,true);
+    document.removeEventListener('touchend',firstTouch,true);
+    if(!musicOff&&!musicOn)playMusic();
+  }
+  document.addEventListener('click',firstTouch,true);
+  document.addEventListener('touchend',firstTouch,true);
+  paintMusic();
 
   /* ---------- Registro con código por correo ---------- */
   var emailNow='',cooldownTimer=null;
