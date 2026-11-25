@@ -130,8 +130,8 @@ summary{cursor:pointer;font:600 16px/1.3 var(--body)}
 .review{border-top:2px dashed #b8a574;padding-top:12px}
 .review h3{margin:0 0 8px;font:400 22px/1.1 var(--display)}
 .rev{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:8px;max-height:300px;overflow-y:auto}
-.rev li{display:grid;grid-template-columns:1fr auto auto;gap:6px;align-items:center;background:var(--paper-2);border:1.5px solid var(--ink);border-radius:6px 3px 7px 3px;padding:8px 10px}
-.rev p{margin:0;font-size:16px;line-height:1.3;overflow-wrap:anywhere}
+.rev li{display:flex;flex-wrap:wrap;gap:6px;align-items:center;background:var(--paper-2);border:1.5px solid var(--ink);border-radius:6px 3px 7px 3px;padding:8px 10px}
+.rev p{flex:1 0 100%;margin:0;font-size:16px;line-height:1.3;overflow-wrap:anywhere}
 .rev button{font:600 14px/1 var(--body);border:2px solid var(--ink);border-radius:6px 3px 7px 3px;padding:7px 9px;cursor:pointer;background:var(--gold);color:var(--ink)}
 .rev button.no{background:#f3c9b8;color:#6e1f0c}
 .rev button:focus-visible{outline:3px solid var(--ember);outline-offset:2px}
@@ -162,6 +162,7 @@ summary{cursor:pointer;font:600 16px/1.3 var(--body)}
         <p class="meta" id="cardMeta"></p>
         <p class="text" id="cardText"></p>
         <button class="del" id="del" type="button" hidden>Borrar este deseo (moderador)</button>
+        <button class="del" id="delBlock" type="button" hidden>Borrar y bloquear al autor</button>
       </div>
       <button class="musicbtn" id="musicBtn" type="button" aria-pressed="false" aria-label="Activar la música"><span id="musicIco"></span>Música</button>
       <audio id="bgm" src="musica.mp3" loop preload="none"></audio>
@@ -641,7 +642,7 @@ summary{cursor:pointer;font:600 16px/1.3 var(--body)}
     if(!w){card.hidden=true;selectedWishId=null;tree.setSelected(null);return;}
     $('cardMeta').textContent='Deseo anónimo · '+(SHAPES[w.shape]||'Estrella');
     $('cardText').textContent=w.text;
-    $('del').hidden=!isMod;
+    $('del').hidden=$('delBlock').hidden=!isMod;
     card.hidden=false;tree.faceTo(id);
   }
   function addWish(id,shape,text,animate){
@@ -668,13 +669,21 @@ summary{cursor:pointer;font:600 16px/1.3 var(--body)}
     $('revCount').textContent=pending.length;
     var ul=$('revList');ul.textContent='';
     pending.forEach(function(w){
-      var li=document.createElement('li'),p=document.createElement('p'),ok=document.createElement('button'),no=document.createElement('button');
+      var li=document.createElement('li'),p=document.createElement('p'),ok=document.createElement('button'),no=document.createElement('button'),bl=document.createElement('button');
       p.textContent=(SHAPES[w.shape]||'')+' · '+w.text;
-      ok.type=no.type='button';ok.textContent='Aprobar';no.textContent='Borrar';no.className='no';
+      ok.type=no.type=bl.type='button';ok.textContent='Aprobar';no.textContent='Borrar';bl.textContent='Borrar y bloquear';no.className=bl.className='no';
       ok.addEventListener('click',function(){review(w.id,true);});
       no.addEventListener('click',function(){review(w.id,false);});
-      li.append(p,ok,no);ul.appendChild(li);
+      bl.addEventListener('click',function(){blockAuthor(w.id,sync);});
+      li.append(p,ok,no,bl);ul.appendChild(li);
     });
+  }
+  function blockAuthor(id,done){
+    if(!window.confirm('¿Borrar este deseo y bloquear a quien lo escribió? Ya no podrá colgar otro.'))return;
+    sb.rpc('block_author',{wish_id:id}).then(function(r){
+      if(r.error){window.alert('No se pudo completar. Intenta de nuevo.');return;}
+      done(id);
+    },function(){window.alert('No hay conexión. Intenta de nuevo.');});
   }
   function review(id,approve){
     if(!approve&&!window.confirm('¿Borrar este deseo para siempre?'))return;
@@ -868,7 +877,7 @@ summary{cursor:pointer;font:600 16px/1.3 var(--body)}
       $('specialSet').hidden=!(res[2]&&res[2].data===true);
       var st=res[1]&&res[1].data;
       $('modNote').hidden=!isMod;
-      if(selectedWishId!==null)$('del').hidden=!isMod;
+      if(selectedWishId!==null)$('del').hidden=$('delBlock').hidden=!isMod;
       if(st)showDone(st==='pending');else show('form');
       if(isMod)sync();
     },function(){
@@ -878,7 +887,7 @@ summary{cursor:pointer;font:600 16px/1.3 var(--body)}
   function loggedOut(){
     isMod=false;pending=[];renderReview();$('specialSet').hidden=true;
     document.querySelector('input[name=shape][value=estrella]').checked=true;
-    $('sess').hidden=true;$('modNote').hidden=true;$('del').hidden=true;
+    $('sess').hidden=true;$('modNote').hidden=true;$('del').hidden=true;$('delBlock').hidden=true;
     mailIn.value='';show('formEmail');
   }
   $('logout').addEventListener('click',function(){
@@ -899,7 +908,7 @@ summary{cursor:pointer;font:600 16px/1.3 var(--body)}
       btn.disabled=false;
       if(r.error){
         if(r.error.code==='23505'){sb.rpc('my_wish_status').then(function(x){showDone(x&&x.data==='pending');});}
-        else err.textContent='No pudimos guardar tu deseo. Si pasó mucho tiempo, sal y vuelve a entrar con tu correo.';
+        else err.textContent='No pudimos guardar tu deseo. Si pasó mucho tiempo, sal y vuelve a entrar con tu correo. Si sigue igual, tu cuenta no tiene permiso para colgar deseos.';
         return;
       }
       if(r.data.status==='pending'){showDone(true);return;}
@@ -921,6 +930,11 @@ summary{cursor:pointer;font:600 16px/1.3 var(--body)}
       if(r.error||!r.data||!r.data.length){window.alert('No se pudo borrar el deseo.');return;}
       removeWish(id);
     },function(){window.alert('No hay conexión. Intenta de nuevo.');});
+  });
+
+  $('delBlock').addEventListener('click',function(){
+    if(selectedWishId===null||!isMod)return;
+    blockAuthor(selectedWishId,function(id){removeWish(id);});
   });
 
   /* ---------- Arranque ---------- */
